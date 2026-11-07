@@ -609,6 +609,23 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
         <h2>Guardadas</h2>
         <div class="notegrid" id="noteList"></div>
       </section>
+
+      <section class="card flat">
+        <h2>Copia de seguridad</h2>
+        <p class="empty">Tus datos viven en el navegador donde abras esto. Cópialos para llevarlos a otro navegador, al celular, o para no perderlos.</p>
+        <div class="pickrow" style="margin-top:12px">
+          <button class="go ghost" id="bkCopy">Copiar mis datos</button>
+          <button class="go ghost" id="bkShow">Pegar datos</button>
+        </div>
+        <div id="bkPanel" hidden style="margin-top:11px">
+          <textarea id="bkText" placeholder="Pega aquí el texto que copiaste del otro navegador"></textarea>
+          <div class="pickrow" style="margin-top:9px">
+            <button class="go" id="bkImport">Importar</button>
+            <span class="hint">Se añade a lo que ya tienes; no borra nada.</span>
+          </div>
+        </div>
+        <div class="hint" id="bkStatus" style="margin-top:9px"></div>
+      </section>
     </main>
 
     <footer>
@@ -2254,6 +2271,86 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       nStatus(e && e.code === "rate_limited" ? "Demasiadas peticiones, prueba en un momento." : "No se pudo leer la imagen.");
     });
   }
+
+  /* ================= copia de seguridad ================= */
+  function bkStatus(t){ var e = document.getElementById("bkStatus"); if(e) e.textContent = t || ""; }
+
+  document.getElementById("bkCopy").addEventListener("click", function(){
+    var blob = JSON.stringify({ v:1, days:days, lists:lists, notes:notes, recipes:recipes, goals:goals, meds:medsList });
+    var done = function(){ bkStatus("Copiado. Pégalo en el otro navegador, en esta misma pantalla."); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(blob).then(done).catch(function(){ fallback(); });
+    } else fallback();
+    function fallback(){
+      var p = document.getElementById("bkPanel"), t = document.getElementById("bkText");
+      p.hidden = false; t.value = blob; t.focus(); t.select();
+      bkStatus("No pude copiarlo solo. Selecciona todo el texto de arriba y cópialo a mano.");
+    }
+  });
+
+  document.getElementById("bkShow").addEventListener("click", function(){
+    var p = document.getElementById("bkPanel");
+    p.hidden = !p.hidden;
+    if(!p.hidden) document.getElementById("bkText").focus();
+  });
+
+  document.getElementById("bkImport").addEventListener("click", function(){
+    var raw = document.getElementById("bkText").value.trim();
+    if(!raw){ bkStatus("Pega primero el texto."); return; }
+    var inc;
+    try { inc = JSON.parse(raw); } catch(e){ bkStatus("Ese texto no se entiende. Cópialo entero, desde la primera llave hasta la última."); return; }
+    if(!inc || typeof inc !== "object"){ bkStatus("Ese texto no es una copia válida."); return; }
+
+    var nDays = 0, nItems = 0;
+    if(inc.days && typeof inc.days === "object"){
+      Object.keys(inc.days).forEach(function(k){
+        var fuera = normDay(k, inc.days[k] || {});
+        var aqui = days[k];
+        if(!aqui){ days[k] = fuera; nDays++; nItems += fuera.items.length; return; }
+        // fusiona: lo que ya hay manda, se añade lo que falta
+        var have = {};
+        aqui.items.forEach(function(x){ if(x && x.id) have[x.id] = 1; });
+        fuera.items.forEach(function(x){
+          if(x && x.id && !have[x.id]){ aqui.items.push(x); nItems++; }
+        });
+        if(!aqui.ml && fuera.ml) aqui.ml = fuera.ml;
+        if(aqui.weight == null && fuera.weight != null) aqui.weight = fuera.weight;
+        if(!aqui.note && fuera.note) aqui.note = fuera.note;
+        aqui.free = aqui.free || fuera.free;
+        aqui.period = aqui.period || fuera.period;
+        aqui.electro = aqui.electro || fuera.electro;
+        Object.keys(fuera.feel || {}).forEach(function(f){ if(aqui.feel[f] == null) aqui.feel[f] = fuera.feel[f]; });
+        Object.keys(fuera.meds || {}).forEach(function(f){ if(!aqui.meds[f]) aqui.meds[f] = fuera.meds[f]; });
+        nDays++;
+      });
+    }
+    ["comida","personal","despensa"].forEach(function(lk){
+      var f = inc.lists && inc.lists[lk];
+      if(!f || !Array.isArray(f.items)) return;
+      var have = {};
+      lists[lk].items.forEach(function(x){ if(x && x.id) have[x.id] = 1; });
+      f.items.forEach(function(x){ if(x && x.id && !have[x.id]) lists[lk].items.push(x); });
+    });
+    if(inc.notes && typeof inc.notes === "object")
+      Object.keys(inc.notes).forEach(function(k){ if(!notes[k]) notes[k] = inc.notes[k]; });
+    if(inc.recipes && typeof inc.recipes === "object")
+      Object.keys(inc.recipes).forEach(function(k){ if(!recipes[k]) recipes[k] = inc.recipes[k]; });
+    if(Array.isArray(inc.meds) && inc.meds.length && !medsList.length) medsList = inc.meds;
+    if(inc.goals && typeof inc.goals === "object")
+      ["termoMl","waterMl","kcalLo","kcalHi","prot"].forEach(function(f){
+        if(typeof inc.goals[f] === "number" && !goals[f]) goals[f] = inc.goals[f];
+      });
+
+    lsSave();
+    if(db){
+      Object.keys(inc.days || {}).forEach(function(k){ queueSave("days/" + k); });
+      ["comida","personal","despensa"].forEach(function(lk){ queueSave("lists/" + lk); });
+    }
+    document.getElementById("bkText").value = "";
+    document.getElementById("bkPanel").hidden = true;
+    bkStatus("Importado: " + nDays + (nDays === 1 ? " día" : " días") + " y " + nItems + (nItems === 1 ? " comida" : " comidas") + ".");
+    paint();
+  });
 
   /* ================= widget ================= */
   function paintWidget(){
