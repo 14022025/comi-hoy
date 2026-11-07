@@ -1410,11 +1410,13 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
     var starts = Object.keys(days).filter(function(x){
       return days[x] && days[x].period && !(days[shift(x,-1)] || {}).period;
     }).sort();
-    var last = null;
-    starts.forEach(function(s){ if(s <= k) last = s; });
+    var last = null, prev = null;
+    starts.forEach(function(s){ if(s <= k){ prev = last; last = s; } });
     if(!last) return null;
     var n = Math.round((dateOf(k) - dateOf(last)) / 86400000) + 1;
-    return (n >= 1 && n <= 60) ? n : null;
+    if(n < 1 || n > 60) return null;
+    var len = prev ? Math.round((dateOf(last) - dateOf(prev)) / 86400000) : 0;
+    return { n: n, firme: (len >= 21 && len <= 40) };
   }
 
   /* ================= paint: day ================= */
@@ -1458,7 +1460,9 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
     document.getElementById("periodBtn").classList.toggle("on", !!d.period);
 
     var cdn = cycleDay(cur);
-    document.getElementById("cycleTxt").textContent = cdn ? "Día "+cdn+" del ciclo" : "";
+    document.getElementById("cycleTxt").textContent = !cdn ? ""
+      : cdn.firme ? "Día " + cdn.n + " del ciclo"
+      : "Día " + cdn.n + " desde que empezó el sangrado";
 
     paintMeds(d);
 
