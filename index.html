@@ -235,7 +235,7 @@ textarea:focus-visible,input:focus-visible,select:focus-visible,button:focus-vis
    regla = disco vinotinto sobre el número (lo más evidente, como en los
    trackers de ciclo) · día libre = fondo rosa + esquina lima ·
    agua = barra neutra abajo · lo demás = puntos de color arriba. */
-.mcell{position:relative;aspect-ratio:1/.72;max-width:100%;border-radius:10px;border:1.5px solid var(--line);background:transparent;cursor:pointer;padding:4px;display:flex;flex-direction:column;min-width:0;overflow:hidden;transition:transform .12s ease}
+.mcell{position:relative;aspect-ratio:1/.72;max-width:100%;border-radius:10px;border:1.5px solid var(--line);background:transparent;cursor:pointer;padding:5px 6px 8px;display:flex;flex-direction:column;min-width:0;overflow:hidden;transition:transform .12s ease}
 .mcell:hover{transform:translateY(-2px);border-color:var(--ink)}
 .mcell.pad{visibility:hidden;pointer-events:none;border:none}
 .mcell.none{border-color:transparent;background:rgba(138,106,112,.08)}
@@ -243,25 +243,26 @@ textarea:focus-visible,input:focus-visible,select:focus-visible,button:focus-vis
 .mcell.fut:hover{transform:none}
 .mcell.fut .mn{opacity:.38}
 .mcell.free{background:var(--pink)}
-.mcell.free::before{content:"🍔";position:absolute;top:2px;right:3px;font-size:12px;line-height:1;z-index:2}
+
 .mcell.sel{border-color:var(--ink);border-width:2.5px}
 .mcell.today{box-shadow:0 0 0 2.5px var(--lime)}
 
-.mtop{display:flex;align-items:flex-start;gap:3px;position:relative;z-index:1;min-width:0}
-.mn{font-family:var(--display);font-weight:800;font-size:12.5px;line-height:1;margin-right:auto;font-variant-numeric:tabular-nums;
+.mtop{display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;position:relative;z-index:1;min-width:0}
+.mbu{font-size:12px;line-height:1;flex:none}
+.mn{font-family:var(--display);font-weight:800;font-size:12.5px;line-height:1;font-variant-numeric:tabular-nums;
     width:21px;height:21px;display:grid;place-items:center;border-radius:999px;flex:none}
 .mcell.none .mn{color:var(--muted);font-weight:600}
 .mcell.per .mn{background:var(--red);color:#FFF;font-weight:900}
 .mcell.per.per-mid{border-radius:12px}
 
-.mdots{display:flex;flex-direction:column;gap:2.5px;align-items:flex-end;flex:none;padding-top:2px}
+.mdots{display:flex;flex-direction:row;gap:3px;align-items:center;margin-top:auto;position:relative;z-index:1}
 .md{width:6px;height:6px;border-radius:999px;flex:none}
 .md.meds{background:var(--ink)}
 .md.el{background:var(--lime);box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .md.wt{border:1.5px solid var(--muted);background:transparent;width:7px;height:7px}
 
-.mwater{position:absolute;left:5px;right:5px;bottom:5px;height:4px;border-radius:999px;background:var(--line);overflow:hidden;z-index:1}
-.mwater i{display:block;height:100%;border-radius:999px;background:var(--ink);opacity:.45}
+.mwater{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--line);overflow:hidden;z-index:1}
+.mwater i{display:block;height:100%;background:var(--ink);opacity:.5}
 
 .mlegend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding-top:12px;padding-bottom:2px;border-top:1.5px dotted var(--line);font-size:12px;line-height:1.3;color:var(--muted)}
 .mlegend span{display:inline-flex;align-items:center;gap:5px}
@@ -1796,7 +1797,8 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       var wpc = Math.round(Math.min(1, ((d&&d.ml)||0)/wgoal())*100);
 
       c.innerHTML = '<span class="mtop"><span class="mn">'+n+'</span>'+
-                    (dots ? '<span class="mdots">'+dots+'</span>' : "")+'</span>'+
+                    ((d && d.free) ? '<span class="mbu">🍔</span>' : "")+'</span>'+
+                    (dots ? '<span class="mdots">'+dots+'</span>' : "")+
                     (wpc ? '<span class="mwater"><i style="width:'+wpc+'%"></i></span>' : "");
       c.addEventListener("click", function(){ cur = k; location.hash = "dia"; });
       grid.appendChild(c);
