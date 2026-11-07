@@ -457,7 +457,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
         </section>
 
         <section class="card">
-          <h2>Calorías de hoy</h2>
+          <h2 id="kcalHead">Calorías de hoy</h2>
           <div class="bigline"><span class="kcalbig" id="kcalNum">—</span></div>
           <div class="unit" id="kcalSub" style="margin-top:6px"></div>
           <div class="pickrow" style="margin-top:14px">
@@ -503,7 +503,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
         <section class="card">
           <h2>Peso y notas</h2>
           <div class="field" style="margin-top:12px">
-            <label for="weight">Peso de hoy</label>
+            <label for="weight" id="weightLabel">Peso de hoy</label>
             <input type="text" id="weight" inputmode="decimal" placeholder="—" autocomplete="off">
             <span class="unit">kg · opcional, no hace falta a diario</span>
           </div>
@@ -1433,9 +1433,20 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
     paintDiag();
   }
 
+  /* "de hoy" sólo si es hoy: en otro día la tarjeta tiene que decirlo. */
+  function daySuffix(k){
+    var t = todayKey();
+    if(k === t) return "de hoy";
+    if(k === shift(t,-1)) return "de ayer";
+    var d = dateOf(k);
+    return "del " + DAYNAMES[d.getDay()].toLowerCase() + " " + d.getDate();
+  }
+
   function paintDay(){
     var d = cd(), t = todayKey();
     document.getElementById("dayTitle").innerHTML = esc(fmtTitle(cur)) + '<span>.</span>';
+    document.getElementById("kcalHead").textContent = "Calorías " + daySuffix(cur);
+    document.getElementById("weightLabel").textContent = "Peso " + daySuffix(cur);
     document.getElementById("freeDay").classList.toggle("on", !!d.free);
     document.getElementById("periodBtn").classList.toggle("on", !!d.period);
 
