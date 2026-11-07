@@ -160,6 +160,9 @@ ul.items:empty{display:none}
 .go.ghost{background:transparent;border:2px solid var(--ink);padding:7px 16px}
 
 /* water */
+.medin{width:100%;border:2px solid var(--line);border-radius:10px;padding:8px 11px;font-weight:600;background:var(--card)}
+.act-del{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer;flex:none;align-self:flex-start}
+.act-del:hover{background:var(--pink);border-color:var(--ink)}
 .stepper{width:46px;height:46px;border-radius:999px;border:2px solid var(--ink);background:transparent;font-size:22px;font-weight:800;line-height:1;cursor:pointer;flex:none;display:grid;place-items:center;padding:0}
 .stepper:hover{background:var(--ink);color:var(--paper)}
 .vrow{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 9px;padding:11px 13px;border-radius:14px;margin-top:9px;font-size:14px;line-height:1.4}
@@ -525,8 +528,8 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
 
         <section class="card note-card">
           <h2>Sobre la sed</h2>
-          <p>La metformina reseca la boca y da sed en mucha gente, y además tira del magnesio y de la vitamina B12 con el tiempo. Si encima tomas mucha agua <strong>sin sodio, potasio ni magnesio</strong>, la orinas casi toda y sigues seca.</p>
-          <p>Por eso aquí el agua y los electrolitos van por separado. Lleva dos semanas de esto a tu médica y pregúntale directamente si la sed es la metformina y si toca mirar B12.</p>
+          <p>Muchas medicinas resecan la boca y dan sed, y algunas tiran del magnesio o de la vitamina B12 con el tiempo. Si encima tomas mucha agua <strong>sin sodio, potasio ni magnesio</strong>, la orinas casi toda y sigues seca.</p>
+          <p>Por eso aquí el agua y los electrolitos van por separado. Lleva dos semanas de esto a tu médica y pregúntale si la sed puede ser de tu medicación y si toca mirar la B12.</p>
         </section>
 
         <section class="card flat">
@@ -672,11 +675,8 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
     {k:"sueno",     n:"Dormí",     lo:"Fatal",      hi:"Perfecto"},
     {k:"antojos",   n:"Antojos",   lo:"Ninguno",    hi:"Muchos"}
   ];
-  var MEDS = [
-    {k:"metformina", n:"Metformina",  dose:"500 mg · 1 al día",       daily:true},
-    {k:"hormeel",    n:"Hormeel",     dose:"25 gotas · todos los días", daily:true},
-    {k:"d3",         n:"Vitamina D3", dose:"7000 UI · 1 vez por semana", daily:false, wdays:[3,4], wtxt:"miércoles o jueves"}
-  ];
+  /* Las medicinas las pone cada quien desde la app; aquí no va ninguna. */
+  var medsList = [];
   var LISTS = [
     {k:"comida",   n:"Comida",   sub:"lo que falta para comer"},
     {k:"personal", n:"Personal", sub:"cremas, maquillaje, cuidado"}
@@ -726,6 +726,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       localStorage.setItem(LS+"notes", JSON.stringify(notes));
       localStorage.setItem(LS+"recipes", JSON.stringify(recipes));
       localStorage.setItem(LS+"goals", JSON.stringify(goals));
+      localStorage.setItem(LS+"meds", JSON.stringify(medsList));
       lsOk = true;
     }catch(e){ lsOk = false; lastErr = "local: " + (e && e.name || "?"); }
   }
@@ -741,6 +742,8 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       if(n && typeof n === "object") notes = n;
       var r = JSON.parse(localStorage.getItem(LS+"recipes") || "null");
       if(r && typeof r === "object") recipes = r;
+      var md = JSON.parse(localStorage.getItem(LS+"meds") || "null");
+      if(Array.isArray(md)) medsList = md;
       var g = JSON.parse(localStorage.getItem(LS+"goals") || "null");
       if(g && typeof g === "object"){
         ["termoMl","waterMl","kcalLo","kcalHi","prot"].forEach(function(f){
@@ -1168,20 +1171,111 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
   });
 
   var medEl = document.getElementById("medlist");
-  MEDS.forEach(function(m){
-    var row = document.createElement("div");
-    row.className = "medrow";
-    row.innerHTML = '<div class="mi"><b>'+m.n+'</b><span>'+m.dose+'</span></div>'+
-                    '<span class="badge quiet" data-badge="'+m.k+'" hidden></span>'+
-                    '<button class="toggle" data-med="'+m.k+'">Tomada</button>';
-    row.querySelector('[data-med="'+m.k+'"]').addEventListener("click", function(){
-      var d = cd();
-      if(!d.meds || typeof d.meds !== "object") d.meds = {};
-      d.meds[m.k] = !d.meds[m.k];
-      queueSave("days/"+cur); paint();
+  var medEditing = false;
+
+  function toggleMed(dayK, id){
+    var d = day(dayK);
+    if(!d.meds || typeof d.meds !== "object") d.meds = {};
+    d.meds[id] = !d.meds[id];
+    queueSave("days/" + dayK, true); paint();
+  }
+  function saveMeds(){
+    try{ localStorage.setItem(LS + "meds", JSON.stringify(medsList)); }catch(e){}
+    if(db) db.doc("settings/meds").set({ list: medsList }).catch(function(){});
+    paint();
+  }
+
+  function paintMeds(d){
+    medEl.innerHTML = "";
+    if(medEditing){ paintMedEditor(); return; }
+    if(!medsList.length){
+      medEl.innerHTML = '<div class="empty">Aún no has puesto tus medicinas. Añádelas una vez y cada día solo tendrás que marcarlas.</div>';
+    }
+    medsList.forEach(function(m){
+      var on = !!(d.meds && d.meds[m.id]);
+      var row = document.createElement("div");
+      row.className = "medrow";
+      var badge = "";
+      if(!m.daily){
+        var isDay = (m.wdays || []).indexOf(dateOf(cur).getDay()) >= 0;
+        var lastK = null;
+        Object.keys(days).sort().forEach(function(k){ if(k <= cur && days[k].meds && days[k].meds[m.id]) lastK = k; });
+        if(on) badge = '<span class="badge">Hecha</span>';
+        else if(isDay) badge = '<span class="badge">Hoy toca</span>';
+        else if(lastK){
+          var dd = Math.round((dateOf(cur) - dateOf(lastK)) / 86400000);
+          badge = '<span class="badge quiet">' + (dd === 0 ? "Hoy" : "Hace " + dd + (dd === 1 ? " día" : " días")) + '</span>';
+        } else badge = '<span class="badge quiet">1 vez por semana</span>';
+      }
+      row.innerHTML = '<div class="mi"><b></b><span></span></div>' + badge +
+                      '<button class="toggle' + (on ? " on" : "") + '">' + (on ? "Tomada" : "Marcar") + '</button>';
+      row.querySelector("b").textContent = m.n;
+      row.querySelector(".mi span").textContent = m.dose || "";
+      row.querySelector(".toggle").addEventListener("click", function(){ toggleMed(cur, m.id); });
+      medEl.appendChild(row);
     });
-    medEl.appendChild(row);
-  });
+    var ed = document.createElement("div");
+    ed.className = "pickrow";
+    ed.style.marginTop = "12px";
+    ed.innerHTML = '<button class="go ghost">' + (medsList.length ? "Editar medicinas" : "Añadir mis medicinas") + '</button>';
+    ed.querySelector("button").addEventListener("click", function(){ medEditing = true; paint(); });
+    medEl.appendChild(ed);
+  }
+
+  var DAYSHORT = ["D","L","M","X","J","V","S"];
+  function paintMedEditor(){
+    medsList.forEach(function(m, i){
+      var row = document.createElement("div");
+      row.className = "medrow";
+      row.innerHTML =
+        '<div class="mi" style="display:flex;flex-direction:column;gap:6px">' +
+          '<input type="text" class="medin" placeholder="Nombre (ej. Vitamina D3)">' +
+          '<input type="text" class="medin" placeholder="Dosis (ej. 1000 UI · 1 al día)">' +
+          '<div class="pickrow">' +
+            '<button class="pick' + (m.daily ? " on" : "") + '" data-f="d">Todos los días</button>' +
+            '<button class="pick' + (m.daily ? "" : " on") + '" data-f="w">1 vez por semana</button>' +
+          '</div>' +
+          '<div class="pickrow" data-days' + (m.daily ? ' hidden' : '') + '></div>' +
+        '</div>' +
+        '<button class="act-del">Quitar</button>';
+      var ins = row.querySelectorAll(".medin");
+      ins[0].value = m.n || ""; ins[1].value = m.dose || "";
+      ins[0].addEventListener("input", function(){ medsList[i].n = ins[0].value; });
+      ins[1].addEventListener("input", function(){ medsList[i].dose = ins[1].value; });
+      row.querySelector('[data-f="d"]').addEventListener("click", function(){ medsList[i].daily = true; paint(); });
+      row.querySelector('[data-f="w"]').addEventListener("click", function(){ medsList[i].daily = false; paint(); });
+      var dw = row.querySelector("[data-days]");
+      DAYSHORT.forEach(function(lbl, n){
+        var b = document.createElement("button");
+        var onDay = (m.wdays || []).indexOf(n) >= 0;
+        b.className = "pick" + (onDay ? " on" : "");
+        b.textContent = lbl;
+        b.addEventListener("click", function(){
+          var w = medsList[i].wdays || [];
+          medsList[i].wdays = onDay ? w.filter(function(x){ return x !== n; }) : w.concat([n]);
+          paint();
+        });
+        dw.appendChild(b);
+      });
+      row.querySelector(".act-del").addEventListener("click", function(){
+        medsList.splice(i, 1); saveMeds();
+      });
+      medEl.appendChild(row);
+    });
+    var foot = document.createElement("div");
+    foot.className = "pickrow";
+    foot.style.marginTop = "12px";
+    foot.innerHTML = '<button class="go ghost" data-add>+ Otra medicina</button><button class="go" data-done>Hecho</button>';
+    foot.querySelector("[data-add]").addEventListener("click", function(){
+      medsList.push({ id: "m" + uid(), n: "", dose: "", daily: true, wdays: [] });
+      paint();
+    });
+    foot.querySelector("[data-done]").addEventListener("click", function(){
+      medsList = medsList.filter(function(m){ return (m.n || "").trim(); });
+      medEditing = false; saveMeds();
+    });
+    medEl.appendChild(foot);
+  }
 
   function bumpWater(dayK, deltaMl){
     var d = day(dayK);
@@ -1200,17 +1294,6 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
   });
 
   var gMedsEl = document.getElementById("gMeds");
-  MEDS.forEach(function(m){
-    var b = document.createElement("button");
-    b.className = "gbtn"; b.dataset.med = m.k; b.textContent = m.n;
-    b.addEventListener("click", function(){
-      var t = todayKey(), d = day(t);
-      if(!d.meds || typeof d.meds !== "object") d.meds = {};
-      d.meds[m.k] = !d.meds[m.k];
-      queueSave("days/"+t); paint();
-    });
-    gMedsEl.appendChild(b);
-  });
 
   var trackEl = document.getElementById("track");
   for(var r = 0; r < 2; r++) TAGS.forEach(function(t){
@@ -1342,26 +1425,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
     var cdn = cycleDay(cur);
     document.getElementById("cycleTxt").textContent = cdn ? "Día "+cdn+" del ciclo" : "";
 
-    MEDS.forEach(function(m){
-      var btn = medEl.querySelector('[data-med="'+m.k+'"]');
-      var bdg = medEl.querySelector('[data-badge="'+m.k+'"]');
-      var on = !!(d.meds && d.meds[m.k]);
-      btn.classList.toggle("on", on);
-      btn.textContent = on ? "Tomada" : "Marcar";
-      if(m.daily){ bdg.hidden = true; return; }
-      var wd = dateOf(cur).getDay();
-      var isDay = m.wdays.indexOf(wd) >= 0;
-      var lastK = null;
-      Object.keys(days).sort().forEach(function(k){ if(k <= cur && days[k].meds && days[k].meds[m.k]) lastK = k; });
-      bdg.hidden = false;
-      if(on){ bdg.textContent = "Hecha"; bdg.className = "badge"; }
-      else if(isDay){ bdg.textContent = "Hoy toca"; bdg.className = "badge"; }
-      else if(lastK){
-        var dd = Math.round((dateOf(cur) - dateOf(lastK)) / 86400000);
-        bdg.textContent = dd === 0 ? "Hoy" : "Hace "+dd+(dd === 1 ? " día" : " días");
-        bdg.className = "badge quiet";
-      } else { bdg.textContent = m.wtxt; bdg.className = "badge quiet"; }
-    });
+    paintMeds(d);
 
     var ml = d.ml || 0;
     var termos = ml / goals.termoMl;
@@ -1471,7 +1535,14 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
   function wgoal(){ return goals.waterMl || 2500; }
   function litros(ml){ return (ml/1000).toFixed(1).replace(".",","); }
 
-  function anyMed(d){ return !!(d.meds && (d.meds.metformina || d.meds.hormeel || d.meds.d3)); }
+  function anyMed(d){
+    var m = d.meds || {};
+    return Object.keys(m).some(function(k){ return !!m[k]; });
+  }
+  function medName(id){
+    var m = medsList.filter(function(x){ return x.id === id; })[0];
+    return m ? m.n : id;
+  }
 
   function vrow(kind, label, text){
     return '<div class="vrow v-'+kind+'"><b>'+esc(label)+'</b><span class="vt">'+text+'</span></div>';
@@ -1618,7 +1689,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       var hi = ws.filter(function(d){ return (d.ml||0) >= wgoal()*0.8; }).map(function(d){ return d.feel.sed; });
       if(lo.length >= 2 && hi.length >= 2){
         var la = avg(lo), ha = avg(hi);
-        if(Math.abs(la-ha) < 0.6) out.push("Tu sed es casi la misma bebas poco o mucho (<b>"+r1(la)+"</b> contra <b>"+r1(ha)+"</b>). Si más agua no la baja, el agua no es el problema: mira electrolitos y habla de la metformina con tu médica.");
+        if(Math.abs(la-ha) < 0.6) out.push("Tu sed es casi la misma bebas poco o mucho (<b>"+r1(la)+"</b> contra <b>"+r1(ha)+"</b>). Si más agua no la baja, el agua no es el problema: mira electrolitos y háblalo con tu médica.");
         else if(ha < la) out.push("En los días que llegas al objetivo de agua tu sed baja de <b>"+r1(la)+"</b> a <b>"+r1(ha)+"</b>. El agua sí te hace.");
       }
       var we = ws.filter(function(d){ return d.electro; }).map(function(d){ return d.feel.sed; });
@@ -1637,8 +1708,11 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       if(ex > 150) out.push("El día libre te suma <b>"+fmtInt(ex)+" kcal</b> de más frente a un día normal. Repartido entre los siete días son <b>"+fmtInt(ex/7)+"</b> al día: eso solo basta para frenar la bajada.");
     }
 
-    var missed = last14.filter(function(d){ return !(d.meds && d.meds.metformina); }).length;
-    if(last14.length >= 7 && missed >= 3) out.push("Te faltan <b>"+missed+"</b> días de metformina sin marcar en los últimos "+last14.length+". O se te olvida tomarla, o se te olvida marcarla.");
+    var daily = medsList.filter(function(m){ return m.daily; })[0];
+    if(daily){
+      var missed = last14.filter(function(d){ return !(d.meds && d.meds[daily.id]); }).length;
+      if(last14.length >= 7 && missed >= 3) out.push("Te faltan <b>"+missed+"</b> días de "+esc(daily.n)+" sin marcar en los últimos "+last14.length+". O se te olvida tomarla, o se te olvida marcarla.");
+    }
 
     var fe = document.getElementById("findings");
     if(all.length < 3) fe.innerHTML = '<div class="empty">Apunta tres o cuatro días y aquí salen los cruces: agua contra sed, día libre contra hinchazón, electrolitos contra cómo amaneces. Con un día no hay nada que comparar.</div>';
@@ -1736,7 +1810,8 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       ["Días apuntados", rec.length, "de "+ndays],
       ["Agua al día", wa == null ? "—" : r1(wa), "litros"],
       ["Días libres", inMonth.filter(function(d){ return d.free; }).length, ""],
-      ["Metformina", inMonth.filter(function(d){ return d.meds && d.meds.metformina; }).length, "días"]
+      [medsList[0] ? medsList[0].n : "Medicinas",
+       inMonth.filter(function(d){ return medsList[0] ? (d.meds && d.meds[medsList[0].id]) : anyMed(d); }).length, "días"]
     ].map(function(c){
       return '<div class="stat"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+(c[2]?' <small>'+c[2]+'</small>':"")+'</div></div>';
     }).join("");
@@ -2185,8 +2260,13 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
     var t = todayKey(), d = day(t), dt = dateOf(t);
     document.getElementById("gDate").textContent = DAYNAMES[dt.getDay()]+" "+dt.getDate();
     document.getElementById("gWater").textContent = litros(d.ml || 0);
-    Array.prototype.forEach.call(gMedsEl.children, function(b){
-      b.classList.toggle("on", !!(d.meds && d.meds[b.dataset.med]));
+    gMedsEl.innerHTML = "";
+    medsList.forEach(function(m){
+      var b = document.createElement("button");
+      b.className = "gbtn" + (d.meds && d.meds[m.id] ? " on" : "");
+      b.textContent = m.n;
+      b.addEventListener("click", function(){ toggleMed(todayKey(), m.id); });
+      gMedsEl.appendChild(b);
     });
     document.getElementById("gElectro").classList.toggle("on", !!d.electro);
     var n = (d.items||[]).length;
@@ -2204,7 +2284,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
   /* ================= boot ================= */
   function normDay(k, v){
     var meds = v.meds;
-    if(typeof meds === "boolean") meds = { metformina: meds };
+    if(typeof meds === "boolean") meds = { med1: meds };
     if(!meds || typeof meds !== "object") meds = {};
     return {
       date:k,
@@ -2280,6 +2360,11 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       if(!snap.metadata.fromCache && !Object.keys(dirty).length) setStatus(snap.empty ? "Listo para el primer día" : "Guardado");
       paint();
     }, function(){ clearTimeout(loadTimer); setStatus("No se pudo leer el historial"); });
+
+    db.doc("settings/meds").onSnapshot(function(doc){
+      var v = (doc.exists && doc.data()) || {};
+      if(Array.isArray(v.list)){ medsList = v.list; paint(); }
+    }, function(){});
 
     db.doc("settings/goals").onSnapshot(function(doc){
       var v = (doc.exists && doc.data()) || {};

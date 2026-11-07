@@ -21,8 +21,9 @@ Eso tiene dos consecuencias:
 
 ## Qué hace
 
-- **Día** — comidas por franja, con calorías escribibles a mano. Agua en termos.
-  Medicinas, electrolitos, ciclo, peso, cómo te sentiste y notas.
+- **Día** — comidas por franja, con calorías escribibles a mano. Agua en termos
+  (el tamaño del tuyo se configura). Tus medicinas las añades tú desde la app:
+  no viene ninguna puesta. Electrolitos, ciclo, peso, cómo te sentiste y notas.
 - **Mes** — calendario de un vistazo: regla en disco vinotinto, día libre con 🍔,
   agua en barra, y puntos para medicinas, electrolitos y peso.
 - **Listas** — compra de comida y de cuidado personal, continuas y con historial,
