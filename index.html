@@ -1596,10 +1596,10 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       if(!k.any) out += vrow("na", "Calorías", "aún sin calcular hoy");
       else {
         var mid = (k.lo + k.hi) / 2;
-        if(mid < goals.kcalLo * 0.75) out += vrow("mal", "Calorías", "Muy por debajo: <b>"+fmtInt(mid)+"</b> frente a "+fmtInt(goals.kcalLo)+"–"+fmtInt(goals.kcalHi)+". Comer de menos también frena la bajada.");
-        else if(mid < goals.kcalLo) out += vrow("ojo", "Calorías", "Un poco cortas: <b>"+fmtInt(mid)+"</b>, el objetivo empieza en "+fmtInt(goals.kcalLo)+".");
-        else if(mid <= goals.kcalHi) out += vrow("bien", "Calorías", "En el objetivo: <b>"+fmtInt(mid)+"</b>.");
-        else out += vrow("ojo", "Calorías", "<b>"+fmtInt(mid - goals.kcalHi)+"</b> kcal por encima del objetivo.");
+        if(mid < goals.kcalLo * 0.75) out += vrow("mal", "Calorías", "<b>"+fmtInt(mid)+"</b>. Muy poco: así casi no hay forma de llegar a los "+goals.prot+" g de proteína, y el hambre suele cobrárselo luego.");
+        else if(mid < goals.kcalLo) out += vrow("ojo", "Calorías", "<b>"+fmtInt(mid)+"</b>, por debajo de "+fmtInt(goals.kcalLo)+". No pasa nada un día; lo que importa es si te deja llegar a la proteína.");
+        else if(mid <= goals.kcalHi) out += vrow("bien", "Calorías", "<b>"+fmtInt(mid)+"</b>, justo en la banda que baja medio kilo por semana.");
+        else out += vrow("ojo", "Calorías", "<b>"+fmtInt(mid)+"</b>, son "+fmtInt(mid - goals.kcalHi)+" por encima. Un día suelto no rompe nada; la media de la semana sí manda.");
       }
     }
     if(goals.prot){
