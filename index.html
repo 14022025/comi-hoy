@@ -52,6 +52,12 @@ img{max-width:100%}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+/* Si no hay nada que decir, no se dibuja el contenedor. Nunca una
+   cápsula, una etiqueta ni un recuadro vacío ocupando sitio. */
+.status:empty,.hint:empty,.kc:empty,.count:empty,.badge:empty,.mchip:empty,
+.src:empty,.sz:empty,.tg:empty,.kb:empty,.unit:empty,.disclaim:empty,
+.contrib:empty,.mlegend:empty,.aprev:empty,.media:empty,.notegrid:empty,
+.rank:empty,.ktable:empty,.vrow:empty,.chosen:empty{display:none}
 body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.025em;text-wrap:balance}
 button{font:inherit;color:inherit}
@@ -1684,7 +1690,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
 
   function paintStats(){
     var all = recorded(), last14 = all.slice(-14);
-    var waterAvg = avg(last14.map(function(d){ return (d.ml||0)/1000; }));
+    var waterAvg = avg(last14.filter(function(d){ return (d.ml||0) > 0; }).map(function(d){ return d.ml/1000; }));
     var electroDays = last14.filter(function(d){ return d.electro; }).length;
     var weights = all.filter(function(d){ return d.weight != null; });
 
@@ -1830,7 +1836,7 @@ body.w::before{content:"";position:fixed;inset:-20%;z-index:0;
       var dt = dateOf(k); return dt.getFullYear() === y && dt.getMonth() === m;
     }).map(function(k){ return days[k]; });
     var rec = inMonth.filter(function(d){ return (d.items&&d.items.length)||d.ml||d.weight!=null||anyMed(d)||d.period; });
-    var wa = avg(rec.map(function(d){ return (d.ml||0)/1000; }));
+    var wa = avg(rec.filter(function(d){ return (d.ml||0) > 0; }).map(function(d){ return d.ml/1000; }));
     var mk = rec.map(dayKcal).filter(function(x){ return x.any; });
     var mkAvg = avg(mk.map(function(x){ return (x.lo+x.hi)/2; }));
     document.getElementById("mstats").innerHTML = [
